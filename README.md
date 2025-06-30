@@ -12,7 +12,7 @@ Built with Python, CustomTkinter, and packaged with PyInstaller.
 - Simple and responsive GUI
 - Supports multiple providers: MangaHere, MangaPark, MangaPill
 - More providers will be added in future updates
-- Single-file Windows executable available under [Releases](https://github.com/zuhaz/MangaDownloader)
+- Single-file Windows executable available under [Releases](https://github.com/zuhaz/MangaDownloader/releases)
 
 ---
 

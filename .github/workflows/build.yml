@@ -26,14 +26,7 @@ jobs:
           pip install pyinstaller
 
       - name: Build with PyInstaller
-        run: |
-          pyinstaller main.py ^
-            --onefile ^
-            --windowed ^
-            --name MangaDownloader ^
-            --icon=assets/logo.ico ^
-            --add-data "assets/logo.ico;assets" ^
-            --distpath dist
+        run: pyinstaller main.py --onefile --windowed --name MangaDownloader --icon=assets/logo.ico --add-data "assets/logo.ico;assets" --distpath dist
 
       - name: Upload Release
         uses: softprops/action-gh-release@v1

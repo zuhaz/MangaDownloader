@@ -35,9 +35,10 @@ jobs:
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           NOTES_FILE="release_notes/$TAG_NAME.md"
           if [ -f "$NOTES_FILE" ]; then
-            # Escape newlines and special characters for GITHUB_ENV
-            RELEASE_BODY=$(cat "$NOTES_FILE" | sed ':a;N;$!ba;s/\n/\\n/g')
-            echo "RELEASE_BODY=${RELEASE_BODY}" >> $GITHUB_ENV
+            # Use heredoc to preserve raw Markdown content
+            echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
+            cat "$NOTES_FILE" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
           else
             echo "RELEASE_BODY=No release notes found for $TAG_NAME." >> $GITHUB_ENV
           fi

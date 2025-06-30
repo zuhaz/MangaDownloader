@@ -35,11 +35,13 @@ jobs:
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           NOTES_FILE="release_notes/$TAG_NAME.md"
           if [ -f "$NOTES_FILE" ]; then
-            BODY_CONTENT="$(cat "$NOTES_FILE")"
-            BODY_CONTENT="${BODY_CONTENT//$'\n'/%0A}"  # Escape newlines for output
-            echo "body=$BODY_CONTENT" >> $GITHUB_OUTPUT
+            {
+              echo "body<<EOF"
+              cat "$NOTES_FILE"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
           else
-            echo "body=No release notes found for $TAG_NAME." >> $GITHUB_OUTPUT
+            echo "body=No release notes found for $TAG_NAME." >> "$GITHUB_OUTPUT"
           fi
 
       - name: Upload Release

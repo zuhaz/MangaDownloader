@@ -35,7 +35,6 @@ jobs:
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           NOTES_FILE="release_notes/$TAG_NAME.md"
           if [ -f "$NOTES_FILE" ]; then
-            # Use heredoc to preserve raw Markdown content
             echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
             cat "$NOTES_FILE" >> $GITHUB_ENV
             echo "EOF" >> $GITHUB_ENV

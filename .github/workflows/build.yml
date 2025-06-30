@@ -35,15 +35,12 @@ jobs:
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           NOTES_FILE="release_notes/$TAG_NAME.md"
           if [ -f "$NOTES_FILE" ]; then
-            BODY=$(cat "$NOTES_FILE")
+            BODY_CONTENT="$(cat "$NOTES_FILE")"
+            BODY_CONTENT="${BODY_CONTENT//$'\n'/%0A}"  # Escape newlines for output
+            echo "body=$BODY_CONTENT" >> $GITHUB_OUTPUT
           else
-            BODY="No release notes found for $TAG_NAME."
+            echo "body=No release notes found for $TAG_NAME." >> $GITHUB_OUTPUT
           fi
-
-          BODY_ESCAPED="${BODY//'%'/'%25'}"
-          BODY_ESCAPED="${BODY_ESCAPED//$'\n'/'%0A'}"
-          BODY_ESCAPED="${BODY_ESCAPED//$'\r'/'%0D'}"
-          echo "body=$BODY_ESCAPED" >> $GITHUB_OUTPUT
 
       - name: Upload Release
         uses: softprops/action-gh-release@v1

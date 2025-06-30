@@ -35,15 +35,11 @@ jobs:
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           NOTES_FILE="release_notes/$TAG_NAME.md"
           if [ -f "$NOTES_FILE" ]; then
-            {
-              echo "RELEASE_BODY<<EOF"
-              cat "$NOTES_FILE"
-              echo "EOF"
-            } >> $GITHUB_ENV
+            echo "RELEASE_BODY=$(cat "$NOTES_FILE")" >> $GITHUB_ENV
           else
             echo "RELEASE_BODY=No release notes found for $TAG_NAME." >> $GITHUB_ENV
           fi
-          
+
       - name: Upload Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')

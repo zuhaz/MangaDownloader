@@ -3,6 +3,7 @@ from tkinter import filedialog, ttk
 import customtkinter
 import requests
 import os
+import re
 import time
 import threading
 from PIL import Image, ImageDraw
@@ -68,13 +69,38 @@ def filter_path(path):
         path = path.replace(char, "")
     return path
 
+# Function to clean chapter IDs to extract just the chapter number
+def clean_chapter_id(chapter_id):
+    # Check if the chapter ID contains embedded chapter name/number
+    # Common patterns: "552-10558000bleach-chapter-558", "11784-en-berserk", etc.
+    
+    # Try to extract chapter number from common patterns
+    
+    # Pattern 1: Extract chapter number from "chapter-XXX" pattern
+    chapter_match = re.search(r'chapter-(\d+(?:\.\d+)?)', str(chapter_id), re.IGNORECASE)
+    if chapter_match:
+        return chapter_match.group(1)
+    
+    # Pattern 2: Handle volume pattern
+    volume_match = re.search(r'volume-(\d+(?:\.\d+)?)', str(chapter_id), re.IGNORECASE)
+    if volume_match:
+        return f"v{volume_match.group(1)}"
+    
+    # Pattern 3: Extract numeric ID from the beginning (before any text)
+    numeric_match = re.search(r'^(\d+(?:-\d+)?)', str(chapter_id))
+    if numeric_match:
+        return numeric_match.group(1)
+    
+    # If no pattern matches, return the original ID after filtering illegal chars
+    return filter_path(str(chapter_id))
+
 # Function to download manga chapter images
 def download_chapter_images(chapter_id, provider_name, progress_var, status_label, manga_title=""):
     try:
         provider = PROVIDERS[provider_name]
         
         # Create temp directory if it doesn't exist
-        temp_dir = os.path.join("temp", f"{filter_path(manga_title)}_Chapter_{chapter_id}")
+        temp_dir = os.path.join("temp", f"{filter_path(manga_title)}_Chapter_{clean_chapter_id(chapter_id)}")
         if not os.path.exists("temp"):
             os.makedirs("temp")
         if not os.path.exists(temp_dir):
@@ -125,7 +151,7 @@ def convert_to_format(temp_dir, output_path, format_type, manga_title, chapter_i
             
         # Create a safe filename
         safe_manga_title = filter_path(manga_title)
-        safe_chapter_id = filter_path(str(chapter_id))
+        safe_chapter_id = clean_chapter_id(chapter_id)
         output_file = os.path.join(output_path, f"{safe_manga_title}_Chapter_{safe_chapter_id}{format_type}")
         
         # Get all images in the temp directory

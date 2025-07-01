@@ -23,8 +23,6 @@ class Mangapark:
             response = self.client.get(url)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
-            with open("manga_info.html", "w", encoding="utf-8") as f:
-                f.write(soup.prettify())
             manga_info["title"] = soup.select_one("h3.text-lg.font-bold > a").text if soup.select_one("h3.text-lg.font-bold > a") else "Unknown Title"
             manga_info["image"] = soup.select_one("img.w-full.not-prose.shadow-md")["src"] if soup.select_one("img.w-full.not-prose.shadow-md") else None
             # Extract description - simplest direct approach

@@ -71,36 +71,53 @@ def filter_path(path):
 
 # Function to clean chapter IDs to extract just the chapter number
 def clean_chapter_id(chapter_id):
-    # Check if the chapter ID contains embedded chapter name/number
-    # Common patterns: "552-10558000bleach-chapter-558", "11784-en-berserk", etc.
-    
-    # Try to extract chapter number from common patterns
+    """
+    Extract a clean chapter number/identifier from complex chapter IDs.
+    Common patterns: "552-10558000bleach-chapter-558", "11784-en-berserk", etc.
+    """
+    # Convert to string if not already
+    chapter_id_str = str(chapter_id)
     
     # Pattern 1: Extract chapter number from "chapter-XXX" pattern
-    chapter_match = re.search(r'chapter-(\d+(?:\.\d+)?)', str(chapter_id), re.IGNORECASE)
+    chapter_match = re.search(r'chapter[_-](\d+(?:\.\d+)?)', chapter_id_str, re.IGNORECASE)
     if chapter_match:
         return chapter_match.group(1)
     
     # Pattern 2: Handle volume pattern
-    volume_match = re.search(r'volume-(\d+(?:\.\d+)?)', str(chapter_id), re.IGNORECASE)
+    volume_match = re.search(r'volume[_-](\d+(?:\.\d+)?)', chapter_id_str, re.IGNORECASE)
     if volume_match:
         return f"v{volume_match.group(1)}"
     
     # Pattern 3: Extract numeric ID from the beginning (before any text)
-    numeric_match = re.search(r'^(\d+(?:-\d+)?)', str(chapter_id))
+    numeric_match = re.search(r'^(\d+(?:-\d+)?)', chapter_id_str)
     if numeric_match:
         return numeric_match.group(1)
     
+    # Pattern 4: Look for numbers after the last dash
+    dash_match = re.search(r'-(\d+)(?:[^0-9-]|$)', chapter_id_str)
+    if dash_match:
+        return dash_match.group(1)
+    
     # If no pattern matches, return the original ID after filtering illegal chars
-    return filter_path(str(chapter_id))
+    return filter_path(chapter_id_str)
 
 # Function to download manga chapter images
-def download_chapter_images(chapter_id, provider_name, progress_var, status_label, manga_title=""):
+def download_chapter_images(chapter_id, provider_name, progress_var, status_label, manga_title="", chapter_title=None, chapter_num=None):
     try:
         provider = PROVIDERS[provider_name]
         
         # Create temp directory if it doesn't exist
-        temp_dir = os.path.join("temp", f"{filter_path(manga_title)}_Chapter_{clean_chapter_id(chapter_id)}")
+        # Use chapter title if provided, otherwise use chapter ID
+        if chapter_title and chapter_title.strip():
+            safe_chapter_name = filter_path(chapter_title)
+            # If chapter number is provided, include it at the beginning
+            if chapter_num:
+                safe_chapter_name = f"Ch{chapter_num}_{safe_chapter_name}"
+        else:
+            # Fallback to the cleaned chapter ID
+            safe_chapter_name = f"Chapter_{clean_chapter_id(chapter_id)}"
+            
+        temp_dir = os.path.join("temp", f"{filter_path(manga_title)}_{safe_chapter_name}")
         if not os.path.exists("temp"):
             os.makedirs("temp")
         if not os.path.exists(temp_dir):
@@ -143,7 +160,7 @@ def download_chapter_images(chapter_id, provider_name, progress_var, status_labe
         return None, 0
 
 # Function to convert downloaded images to selected format
-def convert_to_format(temp_dir, output_path, format_type, manga_title, chapter_id, status_label):
+def convert_to_format(temp_dir, output_path, format_type, manga_title, chapter_id, status_label, chapter_title=None, chapter_num=None):
     try:
         # Ensure the output directory exists
         if not os.path.exists(output_path):
@@ -151,8 +168,27 @@ def convert_to_format(temp_dir, output_path, format_type, manga_title, chapter_i
             
         # Create a safe filename
         safe_manga_title = filter_path(manga_title)
-        safe_chapter_id = clean_chapter_id(chapter_id)
-        output_file = os.path.join(output_path, f"{safe_manga_title}_Chapter_{safe_chapter_id}{format_type}")
+        
+        # Use chapter title if provided, otherwise use chapter ID
+        if chapter_title and chapter_title.strip():
+            safe_chapter_name = filter_path(chapter_title)
+            # If chapter number is provided, include it at the beginning
+            if chapter_num:
+                safe_chapter_name = f"Ch{chapter_num}_{safe_chapter_name}"
+        else:
+            # Fallback to the cleaned chapter ID
+            safe_chapter_name = f"Chapter_{clean_chapter_id(chapter_id)}"
+        
+        # Ensure unique filenames by checking if file already exists
+        base_output_file = os.path.join(output_path, f"{safe_manga_title}_{safe_chapter_name}")
+        output_file = f"{base_output_file}{format_type}"
+        
+        # If the file already exists (from a previous batch download in the same session),
+        # add a timestamp to make it unique
+        if os.path.exists(output_file):
+            timestamp = int(time.time())
+            base_output_file = os.path.join(output_path, f"{safe_manga_title}_{safe_chapter_name}_{timestamp}")
+            output_file = f"{base_output_file}{format_type}"
         
         # Get all images in the temp directory
         image_files = os.listdir(temp_dir)
@@ -182,7 +218,8 @@ def convert_to_format(temp_dir, output_path, format_type, manga_title, chapter_i
                     # Make sure the path isn't too long
                     if len(output_file) > 240:  # Windows has 260 char path limit
                         short_title = safe_manga_title[:20] if len(safe_manga_title) > 20 else safe_manga_title
-                        output_file = os.path.join(output_path, f"{short_title}_Ch_{safe_chapter_id}{format_type}")
+                        short_chapter = safe_chapter_name[:20] if len(safe_chapter_name) > 20 else safe_chapter_name
+                        output_file = os.path.join(output_path, f"{short_title}_{short_chapter}{format_type}")
                     
                     # Save the PDF
                     images[0].save(
@@ -198,12 +235,13 @@ def convert_to_format(temp_dir, output_path, format_type, manga_title, chapter_i
         
         elif format_type == ".cbz":
             # Create zip and rename to CBZ
-            zip_file = os.path.join(output_path, f"{safe_manga_title}_Chapter_{safe_chapter_id}")
+            zip_file = base_output_file
             
             # Make sure the path isn't too long
             if len(zip_file) > 240:  # Windows has 260 char path limit
                 short_title = safe_manga_title[:20] if len(safe_manga_title) > 20 else safe_manga_title
-                zip_file = os.path.join(output_path, f"{short_title}_Ch_{safe_chapter_id}")
+                short_chapter = safe_chapter_name[:20] if len(safe_chapter_name) > 20 else safe_chapter_name
+                zip_file = os.path.join(output_path, f"{short_title}_{short_chapter}")
                 output_file = f"{zip_file}.cbz"
                 
             try:
@@ -219,12 +257,18 @@ def convert_to_format(temp_dir, output_path, format_type, manga_title, chapter_i
         
         elif format_type == ".png":
             # Create a subfolder for the PNGs
-            png_folder = os.path.join(output_path, f"{safe_manga_title}_Chapter_{safe_chapter_id}")
+            png_folder = base_output_file
             
             # Make sure the path isn't too long
             if len(png_folder) > 240:  # Windows has 260 char path limit
                 short_title = safe_manga_title[:20] if len(safe_manga_title) > 20 else safe_manga_title
-                png_folder = os.path.join(output_path, f"{short_title}_Ch_{safe_chapter_id}")
+                short_chapter = safe_chapter_name[:20] if len(safe_chapter_name) > 20 else safe_chapter_name
+                png_folder = os.path.join(output_path, f"{short_title}_{short_chapter}")
+                
+            # If folder already exists, add timestamp
+            if os.path.exists(png_folder):
+                timestamp = int(time.time())
+                png_folder = f"{png_folder}_{timestamp}"
                 
             if not os.path.exists(png_folder):
                 os.makedirs(png_folder)
@@ -741,7 +785,7 @@ def download_selected_chapter():
             
             progress_bar.pack(fill=tk.X, padx=5, pady=(0, 5))
             
-            temp_dir, total_pages = download_chapter_images(chapter_id, provider_name, progress_var, status_label, manga_title)
+            temp_dir, total_pages = download_chapter_images(chapter_id, provider_name, progress_var, status_label, manga_title, chapter.get("title"), chapter.get("chapter"))
             
             if not temp_dir or total_pages == 0:
                 status_label.configure(text="Download failed")
@@ -753,7 +797,7 @@ def download_selected_chapter():
                 return
             
             # Convert to selected format and get the output file path
-            success, output_file = convert_to_format(temp_dir, download_path, format_type, manga_title, chapter_id, status_label)
+            success, output_file = convert_to_format(temp_dir, download_path, format_type, manga_title, chapter_id, status_label, chapter.get("title"), chapter.get("chapter"))
             
             # Clear progress bars when done
             clear_progress_bars()
@@ -916,7 +960,7 @@ def download_batch_chapters():
                 
                 progress_bar.pack(fill=tk.X, padx=5, pady=(0, 5))
                 
-                temp_dir, total_pages = download_chapter_images(chapter_id, provider_name, progress_var, status_label, manga_title)
+                temp_dir, total_pages = download_chapter_images(chapter_id, provider_name, progress_var, status_label, manga_title, chapter.get("title"), chapter.get("chapter"))
                 
                 if not temp_dir or total_pages == 0:
                     print(f"Download failed for chapter {chapter_num}")
@@ -924,7 +968,7 @@ def download_batch_chapters():
                     continue
                 
                 # Convert to selected format and get output file path
-                success, output_file = convert_to_format(temp_dir, download_path, format_type, manga_title, chapter_id, status_label)
+                success, output_file = convert_to_format(temp_dir, download_path, format_type, manga_title, chapter_id, status_label, chapter.get("title"), chapter.get("chapter"))
                 if success:
                     completed += 1
                     last_successful_file = output_file

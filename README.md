@@ -2,6 +2,11 @@
 
 A lightweight desktop app to download manga from multiple online sources.  
 
+# Demo
+
+![Demo Screenshot 1](assets/DEMO_1.png)
+![Demo Screenshot 2](assets/DEMO_2.png)
+
 # Technology used
 Built with Python, CustomTkinter, and packaged with PyInstaller.
 
